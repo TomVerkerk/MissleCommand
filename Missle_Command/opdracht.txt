@@ -1,0 +1,18 @@
+Je levert je project in via GITHub + een link naar het spel op je eigen server.
+
+Wat moet er in je game zitten (op volgorde van belangrijkheid):
+
+1 - Missile Command is online te spelen
+2d - SFX en muziek zijn toegevoegd
+3d - er lopen en/of rijden objecten over de grond
+4 - er is een hoofdmenu incl. highscore (maak gebruik van een Shared Object)
+5 - er is een HUD tijdens het spel (wat is je score)
+6 - het spel wordt steeds moeilijker (soort levels)
+7 - de spel is in fullscreen te spelen
+8 - je spel maakt gebruik van een preloader
+
+Voor een voorbeeld van een Shared object:
+http://www.republicofcode.com/tutorials/flash/as3sharedobject/
+
+Voor een voorbeeld van fullscreen:
+http://www.nidoweb.com/as3-fullscreen.php
