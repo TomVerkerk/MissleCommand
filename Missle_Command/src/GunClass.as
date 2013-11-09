@@ -24,13 +24,20 @@ package
 		
 		private function Update(e:Event):void
 		{
-			this.rotation = 168;
+			this.rotation = 180;
 			var diff_X:Number = mouseX;
 			var diff_Y:Number = mouseY;
 			
 			var radians:Number = Math.atan2(diff_X, diff_Y);
 			var degrees:Number = radians * -180 / Math.PI;
-			
+			if (degrees > 90)
+			{
+				degrees = 90;
+			}
+			if (degrees < -90)
+			{
+				degrees = -90;
+			}
 			this.rotation = degrees;
 		}
 	}

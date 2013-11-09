@@ -24,8 +24,8 @@ package
 			var DiffX:Number = mouseX;
 			var Diffy:Number = mouseY;
 			
-			aimBitmap.x = DiffX;
-			aimBitmap.y = Diffy;
+			aimBitmap.x = DiffX - aimBitmap.width/2;
+			aimBitmap.y = Diffy - aimBitmap.height/2;
 			
 		}
 		

@@ -1,5 +1,6 @@
 package 
 {
+	import adobe.utils.CustomActions;
 	import flash.automation.StageCaptureEvent;
 	import flash.display.Sprite;
 	import flash.display.Bitmap;
@@ -12,6 +13,7 @@ package
 	import flash.events.TextEvent;
 	import flash.geom.Point;
 	import flash.media.Sound;
+	import flash.display.StageDisplayState;
 	import flash.net.URLLoader;
 	import flash.net.URLRequest;
 	import flash.text.TextField;
@@ -32,9 +34,9 @@ package
 		[Embed(source = "../lib/ground.png")]
 		public var ground:Class;
 		public var groundBitmap:Bitmap = new ground;		
-		[Embed(source = "../lib/lucht.png")]
+		[Embed(source = "../lib/lucht2.png")]
 		public var lucht:Class;
-		public var luchtBitmap:Bitmap = new lucht;	
+		public var luchtBitmap:Bitmap = new lucht;
 		[Embed(source = "../lib/City.png")]
 		public var city:Class;
 		public var city01Bitmap:Bitmap = new city;
@@ -47,6 +49,9 @@ package
 		public var city12Bitmap:Bitmap = new city1;
 		public var city13Bitmap:Bitmap = new city1;
 		public var city14Bitmap:Bitmap = new city1;
+		[Embed(source = "../lib/fullscreen.png")]
+		public var fullScreen:Class;
+		public var fullScreenBitmap:Bitmap = new fullScreen;
 		[Embed(source = "../lib/City2.png")]
 		public var city2:Class;
 		public var city21Bitmap:Bitmap = new city2;
@@ -56,20 +61,29 @@ package
 		[Embed(source = "../lib/Menu.png")]
 		public var menuBackground:Class;
 		public var menuBackgroundBitmap:Bitmap = new menuBackground;
+		[Embed(source = "../lib/highscorebackground.png")]
+		public var highScoreBackground:Class;
+		public var highScoreBackgroundBitmap:Bitmap = new highScoreBackground;
 		
-		public var bullets:int = 100;
+		public var levelCount:int = 1;
+		public var bullets:int = 20;
 		private var plane:PlaneClass = new PlaneClass;
 		public var boom:Sound = new Sound;
 		private var gun1:GunClass = new GunClass;
 		private var gun2:GunClass = new GunClass;
 		private var gun3:GunClass = new GunClass;
 		
+		public var inMenu:Boolean = true;
+		public var full:Boolean = false;
+		public var shots:int = 0;
+		public var music:Boolean = false;
+		public var screenfull:Boolean = false;
+		public var play:Boolean = false;
 		public var hitCity1:int =0;
 		public var hitCity2:int =0;
 		public var hitCity3:int =0;
 		public var hitCity4:int =0;
 		public var removed:Boolean = false;
-		public var highScore:int = 0;
 		public var score:int = 0;
 		public var j :int;
 		public var whitchCity1:Bitmap;
@@ -80,6 +94,10 @@ package
 		public var missles:Vector.<Missleclass>;
 		public var explosions:Vector.<Explosion>;
 		
+		public var fallingMissles:int = 5;
+		public var Scores:Highscore = new Highscore;
+		public var HUD:GUI = new GUI;
+		public var fullscreen:Sprite;
 		public var menu:Sprite;
 		public var scoreButton:Sprite;
 		
@@ -93,32 +111,84 @@ package
 
 		private function init(e:Event = null):void 
 		{
-			removeEventListener(Event.ADDED_TO_STAGE, init);
-			addChild(menuBackgroundBitmap);
-			Scorebutton();
-			menuButton();
-			var theme:Theme = new Theme;
-		}
-		
-		public function startGame(e:Event):void  {
-			removeChild(menu);
-			removeChild(scoreButton);
+			stage.addEventListener(KeyboardEvent.KEY_DOWN, returnToMenu);
 			bombs = new Vector.<BombClass>;
 			missles = new Vector.<Missleclass>;
 			explosions = new Vector.<Explosion>;
+			play = false;
+			Mouse.show();
+			removeEventListener(Event.ADDED_TO_STAGE, init);
+			addMenuBackground();
+			Scorebutton();
+			menuButton();
+			drawGround();
+			if (full == false)
+			{
+			fullscreenButton();
+			}
+			if (music == false)
+			{
+				var theme:Theme = new Theme;
+				music = true;
+			}
+		}
+		
+		public function startGame(e:Event):void  {
+			play = true;
+			inMenu = false;
+			removeChild(menu);
+			removeChild(scoreButton);
 			Mouse.hide();
-			addChild(luchtBitmap);
+			addLucht();
 			addChild(plane);
 			stage.addEventListener(MouseEvent.CLICK, shoot);
 			makeGuns();
 			drawGround();
 			drawAim();
-			missleFactory(30);
-			addEventListener(Event.ENTER_FRAME, GUIscore);
+			//if (full == false && added == false)
+			//{
+			//	fullscreenButton();
+			//}
+			missleFactory(5);
+			addChild(HUD);
+			addEventListener(Event.ENTER_FRAME, GUIgame);
 			addEventListener(Event.ENTER_FRAME, updateBullet);
 			addCity();
 		}
+		public function addMenuBackground():void {
+			menuBackgroundBitmap.y = -150;
+			addChild(menuBackgroundBitmap);
+		}
 		
+		public function fullscreenButton():void {
+			fullScreenBitmap.x = 900;
+			fullScreenBitmap.y = 0;
+			stage.addChild(fullScreenBitmap);
+			fullscreen = new Sprite();
+			fullscreen.graphics.beginFill(0xFF0000, 0.0);
+			fullscreen.graphics.lineStyle(1, 0x000000, 0.0, true);
+			fullscreen.graphics.drawRect(900, 0, 100, 30);
+			fullscreen.graphics.endFill();
+			fullscreen.buttonMode = true;
+			fullscreen.useHandCursor = true;
+			fullscreen.mouseChildren = false;
+			fullscreen.addEventListener(MouseEvent.CLICK, goFullscreen);
+			stage.addChild(fullscreen);
+		}
+		
+		public function addLucht ():void {
+			luchtBitmap.y = -200;
+			addChild(luchtBitmap);
+		}
+		
+		public function goFullscreen(e:Event):void
+		{
+			full = true;
+			stage.removeChild(fullScreenBitmap);
+			stage.removeChild(fullscreen);
+			screenfull = true;
+			stage.displayState = StageDisplayState.FULL_SCREEN;
+		}
 		
 		public function menuButton():void {
 			menu = new Sprite();
@@ -128,7 +198,7 @@ package
 			menu.graphics.endFill();
 			menu.buttonMode = true;
 			menu.useHandCursor = true;
-			menu.mouseChildren = false;	
+			menu.mouseChildren = false;
 			menu.addEventListener(MouseEvent.CLICK, startGame);
 			addChild(menu);
 		}
@@ -141,22 +211,73 @@ package
 			scoreButton.graphics.endFill();
 			scoreButton.buttonMode = true;
 			scoreButton.useHandCursor = true;
-			scoreButton.mouseChildren = false;	
-			scoreButton.addEventListener(MouseEvent.CLICK, Highscore);
+			scoreButton.mouseChildren = false;
+			scoreButton.addEventListener(MouseEvent.CLICK, Highscores);
 			addChild(scoreButton);
 		}
 		
-		public function Highscore(e:Event):void {
+		public function Highscores(e:Event):void {
+			inMenu = false;
 			removeChild(scoreButton);
 			removeChild(menu);
-			addChild(luchtBitmap);
+			addHighscoreBackground();
+			drawGround();
+			Scores.update();
+			if (full == false)
+			{
+			fullscreenButton();
+			}
+			addChild(Scores);
+			}
+			
+		public function addHighscoreBackground():void {
+			highScoreBackgroundBitmap.y = -150;
+			addChild(highScoreBackgroundBitmap);
+		}
+			
+		public function returnToMenu (e:KeyboardEvent):void {
+			if (e.charCode == 27 && full == true)
+			{
+				full = false;
+				screenfull = false;
+				fullscreenButton();
+			}
+			if (e.charCode == 8 && inMenu == false)
+			{
+				inMenu = true;
+				if (full == false)
+				{
+				stage.removeChild(fullScreenBitmap);
+				stage.removeChild(fullscreen);
+				}
+				stage.removeEventListener(KeyboardEvent.KEY_DOWN, returnToMenu);
+				stage.removeEventListener(Event.ENTER_FRAME, GUIgame);
+				stage.removeEventListener(Event.ENTER_FRAME, updateBullet);
+				stage.removeEventListener(MouseEvent.CLICK, shoot);
+				bombs.splice(0, bombs.length);
+				missles.splice(0, missles.length);
+				explosions.splice(0, explosions.length);
+				levelCount = 1;
+				fallingMissles = 5;
+				score = 0;
+				bullets = 20;
+				init();
+			}
 		}
 		
-		public function gainScore(gain):void {
+		public function gainScore(gain:int):void {
 			score = score + gain;
-			if (score > highScore)
+			if (score >= Scores.highScore3 && score < Scores.highScore2)
 			{
-				highScore = score;
+				Scores.highScore3 = score;
+			}
+			if (score >= Scores.highScore2 && score < Scores.highScore1)
+			{
+				Scores.highScore2 = score
+			}
+			if (score >= Scores.highScore1)
+			{
+				Scores.highScore1 = score;
 			}
 		}
 		
@@ -172,6 +293,7 @@ package
 		}
 		
 		public function drawAim():void {
+			
 			addChild(aim);
 		}
 				
@@ -189,11 +311,12 @@ package
 			addChild(gun3);
 		}
 		
-		public function GUIscore (e:Event):void
+		public function GUIgame (e:Event):void
 		{
-			var scoreText:GUI = new GUI;
-			scoreText.giveScore = score;
-			this.addChild(scoreText);
+			HUD.levelnumber = levelCount;
+			HUD.bulletCount = bullets;
+			HUD.giveScore = score;
+			HUD.update();
 		}
 		
 		public function removeCity (vervang:Bitmap, met:Bitmap):void
@@ -221,12 +344,13 @@ package
 		}
 		
 		public function drawGround():void {
-			groundBitmap.y = 400;
+			groundBitmap.y = 300;
 			addChild(groundBitmap);
 		}
 			
 		public function shoot(e:MouseEvent):void {
-			if (bullets > 0)
+			shots = shots + 1
+			if (bullets > 0 && shots > 1)
 			{
 			var bomb:BombClass = new BombClass;
 			var sound:Shoot = new Shoot;
@@ -239,11 +363,16 @@ package
 		public function updateBullet(e:Event):void
 		{
 			var l : int = bombs.length;
-			var m : int = missles.length;
 			var explosionTotal : int = explosions.length;
 			if (missles.length == 0)
 			{
-				missleFactory(30);
+				if (play == true)
+				{
+				fallingMissles = fallingMissles + 3;
+				levelCount = levelCount + 1;
+				bullets = bullets + (fallingMissles/1.5);
+				missleFactory(fallingMissles);
+				}
 			}
 			for (var i : int = l-1 ; i >=0 ; i-- )
 			{
@@ -261,9 +390,31 @@ package
 					explosions.splice(ex, 1);
 				}
 			}
-			
+			if (hitCity1 >= 2 && hitCity2 >= 2 && hitCity3 >= 2 && hitCity4 >= 2)
+				{
+				addChild(fullScreenBitmap);
+				addChild(fullscreen);
+				stage.removeEventListener(KeyboardEvent.KEY_DOWN, returnToMenu);
+				stage.removeEventListener(Event.ENTER_FRAME, GUIgame);
+				stage.removeEventListener(Event.ENTER_FRAME, updateBullet);
+				stage.removeEventListener(MouseEvent.CLICK, shoot);
+				bombs.splice(0, bombs.length);
+				missles.splice(0, missles.length);
+				explosions.splice(0, explosions.length);
+				levelCount = 1;
+				fallingMissles = 5;
+				score = 0;
+				bullets = 50;
+				init();
+				}
+			var m : int = missles.length;
 			for (j = m-1; j > -1; j--)
 			{
+				missles[j].hittedCity1 = hitCity1;
+				missles[j].hittedCity2 = hitCity2;
+				missles[j].hittedCity3 = hitCity3;
+				missles[j].hittedCity4 = hitCity4;
+				
 				missles[j].update();
 				for (var q : int = 0; q < explosions.length; q++ )
 				{
@@ -290,6 +441,19 @@ package
 				removed = false;
 				break;
 			}
+			if (missles[j].missleBitmap.x < 0 || missles[j].missleBitmap.x > 1010)
+			{
+				this.removeChild(missles[j]);
+				missles.splice(j, 1);
+				removed = true;
+				break;
+			}
+			if (removed == true)
+			{
+				removed = false;
+				break;
+			}
+			
 			if (missles[j].missleBitmap.x > 160 &&
 				missles[j].missleBitmap.x < 160 + city01Bitmap.width &&
 				missles[j].missleBitmap.y > 462 &&
@@ -402,7 +566,7 @@ package
 				removed = false;
 				break;
 			}
-			if (missles[j].missleBitmap.y > 465 + city04Bitmap.height)
+			if (missles[j].missleBitmap.y > 480 + city04Bitmap.height)
 				{
 					var explosion:Explosion = new Explosion(missles[j].missleBitmap.x, missles[j].missleBitmap.y);
 					explosions.push(explosion);
@@ -417,10 +581,6 @@ package
 				{
 					removed = false;
 					break;
-				}
-			if (hitCity1 >= 2 && hitCity2 >= 2 && hitCity3 >= 2 && hitCity4 >= 2)
-				{
-					trace("game over");
 				}
 			}
 		}

@@ -6,9 +6,9 @@ Wat moet er in je game zitten (op volgorde van belangrijkheid):
 2d - SFX en muziek zijn toegevoegd
 3d - er lopen en/of rijden objecten over de grond
 4 - er is een hoofdmenu incl. highscore (maak gebruik van een Shared Object)
-5 - er is een HUD tijdens het spel (wat is je score)
-6 - het spel wordt steeds moeilijker (soort levels)
-7 - de spel is in fullscreen te spelen
+5d - er is een HUD tijdens het spel (wat is je score)
+6d - het spel wordt steeds moeilijker (soort levels)
+7d - de spel is in fullscreen te spelen
 8 - je spel maakt gebruik van een preloader
 
 Voor een voorbeeld van een Shared object:

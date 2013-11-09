@@ -29,27 +29,40 @@ package
 		
 		public function BombClass():void
 		{
-			posX = mouseX + aim.width / 2;
-			posY = mouseY + aim.width / 2;
+			posX = mouseX
+			posY = mouseY
+			
 			if (posX <= 275)
 			{
-				bombBitmap.x = 55;
-				bombBitmap.y = 445;
+				bombBitmap.x = 52;
+				bombBitmap.y = 443;
 			}
 			if (posX >= 724)
 			{
-				bombBitmap.x = 953;
-				bombBitmap.y = 453;
+				bombBitmap.x = 951;
+				bombBitmap.y = 450;
 			}
 			if(posX >= 275 && posX <= 724)
 			{
-				bombBitmap.x = 495;
-				bombBitmap.y = 460;
+				bombBitmap.x = 492;
+				bombBitmap.y = 458;
+			}
+			if (posY >= bombBitmap.y)
+			{
+				posY = bombBitmap.y-3;
 			}
 			var changeInX:Number = bombBitmap.x - posX;
 			var changeInY:Number = bombBitmap.y - posY;
 			var radians:Number = Math.atan2(changeInY, changeInX);
 			var degrees:Number = radians * 180 / Math.PI;
+			if (degrees < 0)
+			{
+				degrees = 0;
+			}
+			if (degrees > 180)
+			{
+				degrees = 180;
+			}
 			xDirection = (posX - bombBitmap.x >=0)?1:-1;
 			yDirection = (posY - bombBitmap.y >=0)?1:-1;
 			xDiff = posX - bombBitmap.x;
