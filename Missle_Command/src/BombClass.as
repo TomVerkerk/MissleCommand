@@ -23,7 +23,7 @@ package
 		public var yDiff:Number;
 		public var xSpeed:Number;
 		public var ySpeed:Number;
-		public var speed:int = 10;
+		public var speed:int = 14;
 		public var posX:Number;
 		public var posY:Number;
 		
@@ -77,11 +77,10 @@ package
 			{
 				ySpeed=speed*yDirection;
 			}
-			addEventListener(Event.ENTER_FRAME, update);
 			this.addChild(bombBitmap);
 		}
 		
-		public function update(e:Event): void
+		public function update(): void
 		{
 			bombBitmap.x += xSpeed;
 			bombBitmap.y += ySpeed;

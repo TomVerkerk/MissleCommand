@@ -2,6 +2,7 @@ package
 {
 	import adobe.utils.CustomActions;
 	import flash.automation.StageCaptureEvent;
+	import flash.display.Loader;
 	import flash.display.Sprite;
 	import flash.display.Bitmap;
 	import flash.events.Event;
@@ -14,6 +15,7 @@ package
 	import flash.geom.Point;
 	import flash.media.Sound;
 	import flash.display.StageDisplayState;
+	import flash.net.SharedObject;
 	import flash.net.URLLoader;
 	import flash.net.URLRequest;
 	import flash.text.TextField;
@@ -64,7 +66,13 @@ package
 		[Embed(source = "../lib/highscorebackground.png")]
 		public var highScoreBackground:Class;
 		public var highScoreBackgroundBitmap:Bitmap = new highScoreBackground;
+		[Embed(source = "../lib/back.png")]
+		public var back:Class;
+		public var backBitmap:Bitmap = new back;
 		
+		public var paused:Boolean = true;
+		public var pause:Boolean = false;
+		public var time:Number = 0;
 		public var levelCount:int = 1;
 		public var bullets:int = 20;
 		private var plane:PlaneClass = new PlaneClass;
@@ -73,16 +81,20 @@ package
 		private var gun2:GunClass = new GunClass;
 		private var gun3:GunClass = new GunClass;
 		
-		public var inMenu:Boolean = true;
+		public var removeButton:Boolean = false;
+		private var missle:Missleclass = new Missleclass;
+		public var start:Boolean = false;
+		public var first:Boolean = false;
+		public var click:Boolean = false;
 		public var full:Boolean = false;
-		public var shots:int = 0;
+		public var inMenu:Boolean = true;
 		public var music:Boolean = false;
 		public var screenfull:Boolean = false;
 		public var play:Boolean = false;
-		public var hitCity1:int =0;
-		public var hitCity2:int =0;
-		public var hitCity3:int =0;
-		public var hitCity4:int =0;
+		public var hitsCity1:int;
+		public var hitsCity2:int;
+		public var hitsCity3:int;
+		public var hitsCity4:int;
 		public var removed:Boolean = false;
 		public var score:int = 0;
 		public var j :int;
@@ -94,12 +106,15 @@ package
 		public var missles:Vector.<Missleclass>;
 		public var explosions:Vector.<Explosion>;
 		
+		public var timer:Number = 0;
 		public var fallingMissles:int = 5;
 		public var Scores:Highscore = new Highscore;
 		public var HUD:GUI = new GUI;
 		public var fullscreen:Sprite;
+		public var backButton:Sprite;
 		public var menu:Sprite;
 		public var scoreButton:Sprite;
+		public var shared:SharedObject = SharedObject.getLocal("Missle_Command_Highscore_Data","/");
 		
 		private var aim:MouseClass = new MouseClass;
 										
@@ -111,29 +126,51 @@ package
 
 		private function init(e:Event = null):void 
 		{
-			stage.addEventListener(KeyboardEvent.KEY_DOWN, returnToMenu);
+			shared.data.nr1;
+			shared.data.nr2;
+			shared.data.nr3;
+			shared.data.date = new Date();
+			Scores.highScore1 = shared.data.nr1;
+			Scores.highScore2 = shared.data.nr2;
+			Scores.highScore3 = shared.data.nr3;
+			Scores.update();
+			if (first == false)
+			{
+			removeEventListener(Event.ADDED_TO_STAGE, init);
 			bombs = new Vector.<BombClass>;
 			missles = new Vector.<Missleclass>;
 			explosions = new Vector.<Explosion>;
+			first = true;
+			}
+			stage.addEventListener(KeyboardEvent.KEY_DOWN, esc);
 			play = false;
-			Mouse.show();
-			removeEventListener(Event.ADDED_TO_STAGE, init);
+			Mouse.hide();
 			addMenuBackground();
+			makeGuns();
+			stage.addEventListener(Event.ENTER_FRAME, updateGuns);
+			drawGround();
+			drawAim();
+			addCity();
 			Scorebutton();
 			menuButton();
-			drawGround();
 			if (full == false)
 			{
 			fullscreenButton();
 			}
-			if (music == false)
+			if (full == true)
 			{
-				var theme:Theme = new Theme;
-				music = true;
+			fullscreen.addEventListener(MouseEvent.CLICK, goNormalScreen);
+			stage.addChild(fullscreen);
+			stage.addChild(fullScreenBitmap);
 			}
 		}
 		
-		public function startGame(e:Event):void  {
+		public function startGame():void  {
+			hitsCity1 = 0;
+			hitsCity2 = 0;
+			hitsCity3 = 0;
+			hitsCity4 = 0;
+			stage.removeEventListener(Event.ENTER_FRAME, clickBulletUpdate);
 			play = true;
 			inMenu = false;
 			removeChild(menu);
@@ -145,19 +182,44 @@ package
 			makeGuns();
 			drawGround();
 			drawAim();
-			//if (full == false && added == false)
-			//{
-			//	fullscreenButton();
-			//}
+			if (music == false)
+			{
+				var theme:Theme = new Theme;
+				music = true;
+			}
 			missleFactory(5);
 			addChild(HUD);
+			buttonBack();
 			addEventListener(Event.ENTER_FRAME, GUIgame);
-			addEventListener(Event.ENTER_FRAME, updateBullet);
+			stage.addEventListener(Event.ENTER_FRAME, updateBullet);
 			addCity();
 		}
 		public function addMenuBackground():void {
 			menuBackgroundBitmap.y = -150;
 			addChild(menuBackgroundBitmap);
+		}
+		
+		public function buttonBack():void {
+			backBitmap.x = 900;
+			backBitmap.y = 27;
+			if (removeButton == false)
+			{
+			stage.addChild(backBitmap);
+			}
+			backButton = new Sprite();
+			backButton.graphics.beginFill(0xFF0000, 0.0);
+			backButton.graphics.lineStyle(1, 0x000000, 0.0, true);
+			backButton.graphics.drawRect(900, 27, 100, 30);
+			backButton.graphics.endFill();
+			backButton.buttonMode = true;
+			backButton.useHandCursor = true;
+			backButton.mouseChildren = false;
+			backButton.addEventListener(MouseEvent.CLICK, goToBack);
+			if (removeButton == false)
+			{
+			stage.addChild(backButton);
+			}
+			removeButton = false;
 		}
 		
 		public function fullscreenButton():void {
@@ -176,6 +238,36 @@ package
 			stage.addChild(fullscreen);
 		}
 		
+		public function updateGuns(e:Event):void {
+			gun1.Update();
+			gun2.Update();
+			gun3.Update();
+		}
+		
+		public function goToBack (e:MouseEvent):void {
+			goBack();
+		}
+		public function goBack ():void
+		{
+			inMenu = true;
+			stage.removeChild(fullScreenBitmap);
+			stage.removeChild(fullscreen);
+			stage.removeChild(backBitmap);
+			stage.removeChild(backButton);
+			stage.removeEventListener(Event.ENTER_FRAME, GUIgame);
+			stage.removeEventListener(Event.ENTER_FRAME, updateBullet);
+			stage.removeEventListener(MouseEvent.CLICK, shoot);
+			bombs.splice(0, bombs.length);
+			missles.splice(0, missles.length);
+			explosions.splice(0, explosions.length);
+			levelCount = 1;
+			fallingMissles = 5;
+			score = 0;
+			bullets = 20;
+			init();
+		}
+		
+		
 		public function addLucht ():void {
 			luchtBitmap.y = -200;
 			addChild(luchtBitmap);
@@ -184,23 +276,10 @@ package
 		public function goFullscreen(e:Event):void
 		{
 			full = true;
-			stage.removeChild(fullScreenBitmap);
-			stage.removeChild(fullscreen);
 			screenfull = true;
+			fullscreen.removeEventListener(MouseEvent.CLICK, goFullscreen);
+			fullscreen.addEventListener(MouseEvent.CLICK, goNormalScreen);
 			stage.displayState = StageDisplayState.FULL_SCREEN;
-		}
-		
-		public function menuButton():void {
-			menu = new Sprite();
-			menu.graphics.beginFill(0xFF0000, 0.0);
-			menu.graphics.lineStyle(1, 0x000000, 0.0, true);
-			menu.graphics.drawRect(410, 153, 249, 76);
-			menu.graphics.endFill();
-			menu.buttonMode = true;
-			menu.useHandCursor = true;
-			menu.mouseChildren = false;
-			menu.addEventListener(MouseEvent.CLICK, startGame);
-			addChild(menu);
 		}
 		
 		public function Scorebutton():void {
@@ -212,20 +291,96 @@ package
 			scoreButton.buttonMode = true;
 			scoreButton.useHandCursor = true;
 			scoreButton.mouseChildren = false;
-			scoreButton.addEventListener(MouseEvent.CLICK, Highscores);
+			scoreButton.addEventListener(MouseEvent.CLICK, startBooleanFalse);
+			scoreButton.addEventListener(MouseEvent.CLICK, buttonClicked);
 			addChild(scoreButton);
 		}
 		
-		public function Highscores(e:Event):void {
+		public function menuButton():void {
+			menu = new Sprite();
+			menu.graphics.beginFill(0xFF0000, 0.0);
+			menu.graphics.lineStyle(1, 0x000000, 0.0, true);
+			menu.graphics.drawRect(410, 153, 249, 76);
+			menu.graphics.endFill();
+			menu.buttonMode = true;
+			menu.useHandCursor = true;
+			menu.mouseChildren = false;
+			menu.addEventListener(MouseEvent.CLICK, startBooleanTrue);
+			menu.addEventListener(MouseEvent.CLICK, buttonClicked);
+			addChild(menu);
+		}
+		
+		public function startBooleanTrue(e:MouseEvent):void {
+			start = true;
+		}
+		
+		public function startBooleanFalse(e:MouseEvent):void {
+			start = false;
+		}
+		
+		public function buttonClicked(e:MouseEvent):void {
+			var bomb:BombClass = new BombClass;
+			var sound:Shoot = new Shoot;
+			bombs.push(bomb);
+			this.addChild(bomb);
+			time = 0;
+			stage.addEventListener(Event.ENTER_FRAME, clickBulletUpdate);
+			menu.removeEventListener(MouseEvent.CLICK, buttonClicked);
+			scoreButton.removeEventListener(MouseEvent.CLICK, buttonClicked);
+		}
+		
+		public function clickBulletUpdate (e:Event):void {
+			time += 1 / 29;
+			var l : int = bombs.length;
+			for (var i : int = l-1 ; i >=0 ; i-- )
+			{
+				bombs[i].update();
+				if (bombs[i].bombBitmap.y <= bombs[i].posY && bombs[i].parent == this)
+				{
+					this.removeChild(bombs[i]);
+					var explosion:Explosion = new Explosion(bombs[i].posX, bombs[i].posY);
+					explosions.push(explosion);
+					this.addChild(explosion);
+					var boom:Bomb = new Bomb;
+				}
+			}			
+			var explosionTotal : int = explosions.length;
+			for (var ex : int = explosionTotal -1; ex > -1; ex --) {
+				if (time >= 1.2) {
+					explosions.splice(ex, 1);
+					if (start == true)
+					{
+						startGame();
+					}
+					if (start == false)
+					{
+						Highscores();
+					}
+				}
+			}
+			
+		}
+		
+		public function Highscores():void {
 			inMenu = false;
 			removeChild(scoreButton);
 			removeChild(menu);
 			addHighscoreBackground();
+			makeGuns();
 			drawGround();
+			drawAim();
+			addCity();
 			Scores.update();
+			buttonBack();
 			if (full == false)
 			{
 			fullscreenButton();
+			}
+			if (full == true)
+			{
+			fullscreen.addEventListener(MouseEvent.CLICK, goNormalScreen);
+			stage.addChild(fullscreen);
+			stage.addChild(fullScreenBitmap);
 			}
 			addChild(Scores);
 			}
@@ -234,51 +389,57 @@ package
 			highScoreBackgroundBitmap.y = -150;
 			addChild(highScoreBackgroundBitmap);
 		}
-			
-		public function returnToMenu (e:KeyboardEvent):void {
+		
+		public function esc (e:KeyboardEvent):void {
+			if (e.charCode == 112 && play == true && pause == true)
+			{
+				stage.addEventListener(Event.ENTER_FRAME, updateGuns);
+				stage.addEventListener(Event.ENTER_FRAME, updateBullet);
+				stage.addEventListener(MouseEvent.CLICK, shoot);
+				pause = false;
+				paused = false;
+			}
+			if (e.charCode == 112 && play == true && pause == false && paused == true)
+			{
+				stage.removeEventListener(Event.ENTER_FRAME, updateGuns);
+				stage.removeEventListener(Event.ENTER_FRAME, updateBullet);
+				stage.removeEventListener(MouseEvent.CLICK, shoot);
+				pause = true;
+			}
+			paused = true;
 			if (e.charCode == 27 && full == true)
 			{
 				full = false;
+				stage.displayState = StageDisplayState.NORMAL;
+				fullscreen.addEventListener(MouseEvent.CLICK, goFullscreen);
+				fullscreen.removeEventListener(MouseEvent.CLICK, goNormalScreen);
 				screenfull = false;
-				fullscreenButton();
 			}
-			if (e.charCode == 8 && inMenu == false)
-			{
-				inMenu = true;
-				if (full == false)
-				{
-				stage.removeChild(fullScreenBitmap);
-				stage.removeChild(fullscreen);
-				}
-				stage.removeEventListener(KeyboardEvent.KEY_DOWN, returnToMenu);
-				stage.removeEventListener(Event.ENTER_FRAME, GUIgame);
-				stage.removeEventListener(Event.ENTER_FRAME, updateBullet);
-				stage.removeEventListener(MouseEvent.CLICK, shoot);
-				bombs.splice(0, bombs.length);
-				missles.splice(0, missles.length);
-				explosions.splice(0, explosions.length);
-				levelCount = 1;
-				fallingMissles = 5;
-				score = 0;
-				bullets = 20;
-				init();
-			}
+		}
+			
+		public function goNormalScreen (e:MouseEvent):void {
+			full = false;
+			stage.displayState = StageDisplayState.NORMAL;
+			fullscreen.addEventListener(MouseEvent.CLICK, goFullscreen);
+			fullscreen.removeEventListener(MouseEvent.CLICK, goNormalScreen);
+			screenfull = false;
 		}
 		
 		public function gainScore(gain:int):void {
 			score = score + gain;
 			if (score >= Scores.highScore3 && score < Scores.highScore2)
 			{
-				Scores.highScore3 = score;
+				shared.data.nr3 = score;
 			}
 			if (score >= Scores.highScore2 && score < Scores.highScore1)
 			{
-				Scores.highScore2 = score
+				shared.data.nr2 = score
 			}
 			if (score >= Scores.highScore1)
 			{
-				Scores.highScore1 = score;
+				shared.data.nr1 = score;
 			}
+			shared.flush();
 		}
 		
 		public function missleFactory(missleCount:int):void {
@@ -286,7 +447,6 @@ package
 			for (var i:int = 0; i < missleCount; i++) 
 			{
 				var missle:Missleclass = new Missleclass;
-				
 				missles.push(missle);
 				this.addChild(missle);
 			}
@@ -297,7 +457,7 @@ package
 			addChild(aim);
 		}
 				
-		private function makeGuns():void {
+		public function makeGuns():void {
 			gun1.x = 55;
 			gun1.y = 445;
 			addChild(gun1);
@@ -349,8 +509,7 @@ package
 		}
 			
 		public function shoot(e:MouseEvent):void {
-			shots = shots + 1
-			if (bullets > 0 && shots > 1)
+			if (bullets > 0)
 			{
 			var bomb:BombClass = new BombClass;
 			var sound:Shoot = new Shoot;
@@ -362,67 +521,63 @@ package
 		
 		public function updateBullet(e:Event):void
 		{
-			var l : int = bombs.length;
-			var explosionTotal : int = explosions.length;
 			if (missles.length == 0)
 			{
 				if (play == true)
 				{
 				fallingMissles = fallingMissles + 3;
 				levelCount = levelCount + 1;
-				bullets = bullets + (fallingMissles/1.5);
+				bullets = bullets + (fallingMissles);
 				missleFactory(fallingMissles);
 				}
 			}
-			for (var i : int = l-1 ; i >=0 ; i-- )
+			var l : int = bombs.length;
+			for (var i : int = l-1 ; i > -1 ; i-- )
 			{
+				bombs[i].update();
 				if (bombs[i].bombBitmap.y <= bombs[i].posY && bombs[i].parent == this)
 				{
 					this.removeChild(bombs[i]);
 					var explosion:Explosion = new Explosion(bombs[i].posX, bombs[i].posY);
+					bombs.splice(i, 1);
 					explosions.push(explosion);
 					this.addChild(explosion);
 					var boom:Bomb = new Bomb;
 				}
-			}			
+			}	
+			var explosionTotal : int = explosions.length;
 			for (var ex : int = explosionTotal -1; ex > -1; ex --) {
 				if (explosions[ex].time >= 1) {
 					explosions.splice(ex, 1);
 				}
 			}
-			if (hitCity1 >= 2 && hitCity2 >= 2 && hitCity3 >= 2 && hitCity4 >= 2)
+			if (hitsCity1 >= 2 && hitsCity2 >= 2 && hitsCity3 >= 2 && hitsCity4 >= 2)
 				{
-				addChild(fullScreenBitmap);
-				addChild(fullscreen);
-				stage.removeEventListener(KeyboardEvent.KEY_DOWN, returnToMenu);
-				stage.removeEventListener(Event.ENTER_FRAME, GUIgame);
-				stage.removeEventListener(Event.ENTER_FRAME, updateBullet);
-				stage.removeEventListener(MouseEvent.CLICK, shoot);
-				bombs.splice(0, bombs.length);
-				missles.splice(0, missles.length);
-				explosions.splice(0, explosions.length);
-				levelCount = 1;
-				fallingMissles = 5;
-				score = 0;
-				bullets = 50;
-				init();
+					timer += 1 / 29;
+					if (timer > 0.8)
+					{
+					removeButton = true;
+					timer = 0;
+					Scores.update();
+					goBack();
+					}
 				}
 			var m : int = missles.length;
 			for (j = m-1; j > -1; j--)
 			{
-				missles[j].hittedCity1 = hitCity1;
-				missles[j].hittedCity2 = hitCity2;
-				missles[j].hittedCity3 = hitCity3;
-				missles[j].hittedCity4 = hitCity4;
-				
+				missles[j].level = levelCount;
+				missles[j].hitCity1 = hitsCity1;
+				missles[j].hitCity2 = hitsCity2;
+				missles[j].hitCity3 = hitsCity3;
+				missles[j].hitCity4 = hitsCity4;
 				missles[j].update();
 				for (var q : int = 0; q < explosions.length; q++ )
 				{
-					var explosion = explosions[q];
-					if (missles[j].missleBitmap.x > explosion.explosion1Bitmap.x &&
-						missles[j].missleBitmap.x < explosion.explosion1Bitmap.x + explosion.explosion1Bitmap.width &&
-						missles[j].missleBitmap.y > explosion.explosion1Bitmap.y &&
-						missles[j].missleBitmap.y < explosion.explosion1Bitmap.y + explosion.explosion1Bitmap.height)
+					var explosion2 = explosions[q];
+					if (missles[j].missleBitmap.x > explosion2.explosion1Bitmap.x &&
+						missles[j].missleBitmap.x < explosion2.explosion1Bitmap.x + explosion2.explosion1Bitmap.width &&
+						missles[j].missleBitmap.y > explosion2.explosion1Bitmap.y &&
+						missles[j].missleBitmap.y < explosion2.explosion1Bitmap.y + explosion2.explosion1Bitmap.height)
 						{
 							var explosion:Explosion = new Explosion(missles[j].missleBitmap.x, missles[j].missleBitmap.y);
 							explosions.push(explosion);
@@ -431,7 +586,6 @@ package
 							missles.splice(j, 1);
 							gainScore(20);
 							var boom:Bomb = new Bomb;
-							j = missles.length - 1;
 							removed = true;
 							break;
 						}
@@ -456,15 +610,15 @@ package
 			
 			if (missles[j].missleBitmap.x > 160 &&
 				missles[j].missleBitmap.x < 160 + city01Bitmap.width &&
-				missles[j].missleBitmap.y > 462 &&
+				missles[j].missleBitmap.y > 482 &&
 				missles[j].missleBitmap.y < 462 + city01Bitmap.height)
 				{
-					hitCity1 = hitCity1 + 1;
-					if (hitCity1 == 1)
+					hitsCity1 = hitsCity1 + 1;
+					if (hitsCity1 == 1)
 					{
 						removeCity(city01Bitmap, city11Bitmap); 
 					}
-					if (hitCity1 == 2)
+					if (hitsCity1 == 2)
 					{
 						removeCity(city11Bitmap, city21Bitmap);
 					}
@@ -484,15 +638,15 @@ package
 			}
 			if (missles[j].missleBitmap.x > 316 &&
 				missles[j].missleBitmap.x < 316 + city02Bitmap.width &&
-				missles[j].missleBitmap.y > 451 &&
+				missles[j].missleBitmap.y > 471 &&
 				missles[j].missleBitmap.y < 451 + city02Bitmap.height)
 				{
-					hitCity2 = hitCity2 + 1;
-					if (hitCity2 == 1)
+					hitsCity2 = hitsCity2 + 1;
+					if (hitsCity2 == 1)
 					{
 						removeCity(city02Bitmap, city12Bitmap);
 					}
-					if (hitCity2 == 2)
+					if (hitsCity2 == 2)
 					{
 						removeCity(city12Bitmap, city22Bitmap);
 					}
@@ -512,15 +666,15 @@ package
 			}
 			if (missles[j].missleBitmap.x > 578 &&
 				missles[j].missleBitmap.x < 578 + city03Bitmap.width &&
-				missles[j].missleBitmap.y > 453 &&
+				missles[j].missleBitmap.y > 473 &&
 				missles[j].missleBitmap.y < 453 + city03Bitmap.height)
 				{
-					hitCity3 = hitCity3 + 1;
-					if (hitCity3 == 1)
+					hitsCity3 = hitsCity3 + 1;
+					if (hitsCity3 == 1)
 					{
 						removeCity( city03Bitmap, city13Bitmap);
 					}
-					if (hitCity3 == 2)
+					if (hitsCity3 == 2)
 					{
 						removeCity(city13Bitmap, city23Bitmap);
 					}
@@ -540,15 +694,15 @@ package
 			}
 			if (missles[j].missleBitmap.x > 730 &&
 				missles[j].missleBitmap.x < 730 + city04Bitmap.width &&
-				missles[j].missleBitmap.y > 465 &&
+				missles[j].missleBitmap.y > 485 &&
 				missles[j].missleBitmap.y < 465 + city04Bitmap.height)
 				{
-					hitCity4 = hitCity4 + 1;
-					if (hitCity4 == 1)
+					hitsCity4 = hitsCity4 + 1;
+					if (hitsCity4 == 1)
 					{
 						removeCity(city04Bitmap, city14Bitmap);
 					}
-					if (hitCity4 == 2)
+					if (hitsCity4 == 2)
 					{
 						removeCity(city14Bitmap, city24Bitmap);
 					}

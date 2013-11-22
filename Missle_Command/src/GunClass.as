@@ -18,11 +18,10 @@ package
 			gun1Bitmap.x = -gun1Bitmap.width / 2;
 			gun1Bitmap.y = -gun1Bitmap.height * (2/3);
 			
-			addEventListener(Event.ENTER_FRAME, Update);
 			addChild(gun1Bitmap);
 		}
 		
-		private function Update(e:Event):void
+		public function Update():void
 		{
 			this.rotation = 180;
 			var diff_X:Number = mouseX;
